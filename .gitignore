@@ -1,0 +1,99 @@
+# Data files
+data/
+*.csv
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+
+# Exclude specific files in root directory (keep only requirements.txt, README.md, LICENSE)
+# All files in root except the ones we want to keep
+/*
+!requirements.txt
+!README.md
+!LICENSE
+!.gitignore
+!src/
+!stage_1/
+!stage_2/
+!saved_models/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.tmp
+
+# Zone Identifier files (Windows)
+*:Zone.Identifier
+
+# Model files (if too large)
+*.pth
+*.pkl
+*.h5
+*.hdf5
+
+# Results and output directories
+inference_results/
+new_labels_2/
+results/
+output/
+logs/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
