@@ -19,6 +19,7 @@ data/
 !stage_1/
 !stage_2/
 !saved_models/
+!inference_results/
 
 # Python cache files
 __pycache__/
@@ -79,7 +80,6 @@ Thumbs.db
 *.hdf5
 
 # Results and output directories
-inference_results/
 new_labels_2/
 results/
 output/
