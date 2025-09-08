@@ -1,12 +1,12 @@
-# Data files
+# Data files in root directory only
 data/
-*.csv
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.bmp
-*.tiff
+/*.csv
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.bmp
+/*.tiff
 
 # Exclude specific files in root directory (keep only requirements.txt, README.md, LICENSE)
 # All files in root except the ones we want to keep
