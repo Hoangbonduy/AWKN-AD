@@ -48,36 +48,6 @@ def load_ground_truth_labels(place_id, labels_dir):
     else:
         print(f"Warning: No ground truth labels found for place {place_id}")
         return None
-    
-def post_process_anomalies(anomaly_indices, min_duration=2):
-    """Chỉ giữ lại các cụm anomaly có ít nhất min_duration điểm liên tiếp"""
-    if len(anomaly_indices) == 0:
-        return []
-        
-    # Sắp xếp indices
-    anomaly_indices = sorted(anomaly_indices)
-    
-    # Tìm các cụm liên tiếp
-    clusters = []
-    current_cluster = [anomaly_indices[0]]
-    
-    for i in range(1, len(anomaly_indices)):
-        if anomaly_indices[i] == anomaly_indices[i-1] + 1:
-            # Điểm liền kề với cụm hiện tại
-            current_cluster.append(anomaly_indices[i])
-        else:
-            # Bắt đầu cụm mới
-            if len(current_cluster) >= min_duration:
-                clusters.append(current_cluster)
-            current_cluster = [anomaly_indices[i]]
-    
-    # Xử lý cụm cuối
-    if len(current_cluster) >= min_duration:
-        clusters.append(current_cluster)
-        
-    # Làm phẳng các cụm thành list indices
-    filtered_indices = [idx for cluster in clusters for idx in cluster]
-    return filtered_indices
 
 def rolling_zscore_anomaly_detection(reconstruction_errors, window_size=30, zscore_threshold=3.0):
     """
