@@ -1,0 +1,137 @@
+# Cần import thư viện này ở đầu file KAMA.py của bạn
+from statsmodels.tsa.seasonal import STL
+from statsmodels.robust import mad
+import pandas as pd
+import numpy as np
+from scipy.stats import zscore
+from sklearn.preprocessing import RobustScaler
+
+# --- CÁC HÀM CŨ CỦA BẠN (giữ nguyên) ---
+def clean_and_augment_d(d, method='mad', threshold=3.5, noise_scale=0.85):
+    """
+    Làm sạch ngoại lệ trong d và tăng cường dữ liệu.
+    
+    Args:
+        d (np.ndarray): Mảng numpy của thành phần phần dư.
+        method (str): Phương pháp phát hiện ngoại lệ. 'mad' (mặc định) hoặc 'zscore'.
+        threshold (float): Ngưỡng để xác định một điểm là ngoại lệ.
+                           Mặc định là 3.5 cho MAD.
+        noise_scale (float): Tỷ lệ nhiễu để tăng cường dữ liệu.
+        
+    Returns:
+        d_aug (np.ndarray): Mảng d sau khi đã làm sạch và tăng cường.
+    """
+    d_clean = d.copy()
+    median_d = np.median(d)
+    
+    if method == 'mad':
+        # Sử dụng Median Absolute Deviation (MAD) - Mạnh mẽ hơn Z-score
+        # MAD tính toán độ lệch so với trung vị, ít bị ảnh hưởng bởi ngoại lệ.
+        # hằng số 0.6745 giúp mad tương đương với độ lệch chuẩn của phân phối chuẩn.
+        d_mad = mad(d, c=0.6745)
+        
+        # Tránh chia cho 0 nếu chuỗi dữ liệu không có biến động
+        if d_mad > 1e-8:
+            # Tính điểm số dựa trên MAD
+            mad_score = np.abs(d - median_d) / d_mad
+            outliers = mad_score > threshold
+            d_clean = np.where(outliers, median_d, d)
+            
+    elif method == 'zscore':
+        # Giữ lại phương pháp Z-score nếu bạn muốn so sánh
+        z_d = zscore(d)
+        outliers = np.abs(z_d) > threshold
+        d_clean = np.where(outliers, median_d, d)
+
+    # Augmentation: Thêm nhiễu dựa trên độ lệch chuẩn của dữ liệu đã làm sạch
+    std_clean = np.std(d_clean)
+    noise = np.random.normal(0, noise_scale * std_clean, len(d_clean))
+    d_aug = d_clean + noise
+    
+    return d_aug
+
+# --- HÀM MỚI SỬ DỤNG STL ---
+def stl_decomposition(time_series: np.ndarray, period: int = 7, robust: bool = True):
+    """
+    Tầng 1: Phân rã chuỗi thời gian bằng phương pháp STL (Seasonal-Trend decomposition using Loess).
+    - a: Thành phần Xu hướng (trend).
+    - d: Thành phần Phần dư (residual), chứa biến động và bất thường.
+    
+    STL bền vững hơn với các điểm ngoại lệ và không tạo ra độ trễ như KAMA.
+    
+    Args:
+        time_series (np.ndarray): Chuỗi thời gian đầu vào.
+        period (int): Ước tính chu kỳ mùa vụ chính của chuỗi. 
+                      Đối với dữ liệu không có tính mùa vụ rõ ràng, đây là tham số 
+                      kiểm soát độ "mượt" của đường xu hướng. Giá trị lẻ thường 
+                      được ưu tiên.
+        robust (bool): Nếu True, sử dụng phiên bản STL mạnh mẽ, ít bị ảnh hưởng 
+                       bởi các điểm bất thường.
+    """
+    # Chuyển sang pandas Series để dùng STL, vì nó xử lý index tốt hơn
+    series = pd.Series(time_series)
+    
+    # Thực hiện phân rã STL
+    # period là tham số quan trọng nhất của STL
+    stl_result = STL(series, period=period, robust=robust).fit()
+    
+    # Lấy thành phần xu hướng (trend) và phần dư (residual)
+    # a = stl_result.trend
+    a = stl_result.trend
+    d = stl_result.resid
+    
+    # STL có thể tạo ra NaN ở đầu và cuối, ta cần xử lý chúng
+    # a = a.bfill().ffill()
+    a = a.bfill().ffill()
+    d = d.bfill().ffill()
+    
+    return a.values, d.values # Trả về numpy array để nhất quán
+
+# --- Chạy ví dụ ---
+# Giả sử bạn có file 'place.csv' đã được tiền xử lý
+if __name__ == "__main__":
+    DATA_PATH = 'data/cleaned_data_after_idx30.csv'
+    try:
+        df = pd.read_csv(DATA_PATH)
+        
+        # Chỉ lấy placeId đầu tiên để làm ví dụ
+        if not df.empty:
+            first_place_id = df['placeId'].iloc[0]
+            df_one_place = df[df['placeId'] == first_place_id].copy()  # Tạo copy để tránh warning
+
+            # Chỉ áp dụng log1p cho cột 'view' (numeric), không phải toàn bộ DataFrame
+            df_one_place['view'] = np.log1p(df_one_place['view'].values)
+
+            scaler = RobustScaler()
+            df_one_place['view'] = scaler.fit_transform(df_one_place[['view']].values).flatten()
+
+            # Lấy time series array từ DataFrame
+            time_series = df_one_place['view'].values
+
+            # Chạy hàm phân rã bằng STL
+            a_values, d_values = stl_decomposition(time_series)
+
+            d_values = clean_and_augment_d(d_values)  # Clean và augment detail component
+
+            print("=== KẾT QUẢ CHO 1 ĐỊA ĐIỂM DUY NHẤT (SỬ DỤNG STL) ===")
+            
+            # Chuyển đổi lại thành pandas Series để xem và lưu file
+            a_series = pd.Series(a_values)
+            d_series = pd.Series(d_values)
+
+            print(f"\n--- Kết quả cho placeId: {first_place_id} ---")
+            print("Hệ số Xấp xỉ (a - Chuỗi xu hướng STL):")
+            print(a_series.head())
+            a_series.to_csv(f'STL_approximation_placeId_{first_place_id}.csv', index=False, header=['view'])
+            
+            print("\nHệ số Chi tiết (d - Chuỗi biến động STL):")
+            print(d_series.head())
+            d_series.to_csv(f'STL_detail_coeffs_placeId_{first_place_id}.csv', index=False, header=['view'])
+            
+            print(f"\nĐã lưu kết quả vào file STL_approximation_placeId_{first_place_id}.csv và STL_detail_coeffs_placeId_{first_place_id}.csv")
+            print("\n" + "="*50 + "\n")
+        else:
+            print(f"File {DATA_PATH} trống hoặc không đúng định dạng.")
+
+    except FileNotFoundError:
+        print(f"Lỗi: Không tìm thấy file tại đường dẫn '{DATA_PATH}'. Vui lòng kiểm tra lại.")

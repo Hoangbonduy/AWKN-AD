@@ -10,8 +10,8 @@ from sklearn.preprocessing import RobustScaler
 # Giả sử các file này tồn tại trong các thư mục tương ứng
 # Thêm đường dẫn để import các module tùy chỉnh
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from stage_1.KAMA import kama_decomposition
 from stage_1.STL import stl_decomposition
+from stage_1.KAMA import kama_decomposition
 from stage_2.AE import TimeSeriesAutoencoder
 
 def load_model(model_path):
@@ -98,16 +98,38 @@ def plot_combined_results(
     ground_truth_labels=None, loss_a=None, loss_d=None,
     threshold_d=None, save_path=None
 ):
-    """Vẽ biểu đồ chuỗi thời gian với cả hai loại bất thường và ground truth"""
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(20, 18), sharex=True)
+    """Vẽ biểu đồ chuỗi thời gian với cả hai loại bất thường và ground truth (chỉ 2 tháng đầu)"""
+    
+    # Chỉ lấy 2 tháng đầu (60 ngày)
+    max_days = 60
+    if len(dates) > max_days:
+        dates = dates[:max_days]
+        time_series = time_series[:max_days]
+        if loss_a is not None:
+            loss_a = loss_a[:max_days]
+        if loss_d is not None:
+            loss_d = loss_d[:max_days]
+        
+        # Lọc các chỉ số anomaly trong phạm vi 2 tháng đầu
+        trend_anomaly_indices = [idx for idx in trend_anomaly_indices if idx < max_days]
+        other_anomaly_indices = [idx for idx in other_anomaly_indices if idx < max_days]
+    
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(24, 18), sharex=True)
     
     # === BIỂU ĐỒ 1: CHUỖI THỜI GIAN GỐC ===
     ax1.plot(dates, time_series, 'b-', linewidth=1, alpha=0.7, label='Original Time Series')
     
-    # Vẽ Ground Truth (vàng)
+    # Vẽ Ground Truth (vàng) - chỉ trong 2 tháng đầu
     if ground_truth_labels is not None:
-        gt_anomaly_dates = ground_truth_labels[ground_truth_labels['is_anomaly'] == 1]['date']
-        for i, gt_date in enumerate(gt_anomaly_dates):
+        # Lọc ground truth trong phạm vi 2 tháng đầu
+        gt_in_range = ground_truth_labels[
+            (ground_truth_labels['date'] >= dates.iloc[0]) & 
+            (ground_truth_labels['date'] <= dates.iloc[-1]) &
+            (ground_truth_labels['is_anomaly'] == 1)
+        ]
+        
+        for i, row in gt_in_range.iterrows():
+            gt_date = row['date']
             ax1.axvspan(gt_date - pd.Timedelta(days=0.5), gt_date + pd.Timedelta(days=0.5),
                        alpha=0.4, color='yellow',
                        label='Ground Truth Anomaly' if i == 0 else "")
@@ -128,7 +150,7 @@ def plot_combined_results(
                    [time_series[i] for i in other_anomaly_indices],
                    color='red', s=100, zorder=5, label='Predicted Point Anomaly')
     
-    ax1.set_title(f'Time Series - PlaceId: {place_id}', fontsize=16)
+    ax1.set_title(f'Time Series (First 2 Months) - PlaceId: {place_id}', fontsize=16)
     ax1.set_ylabel('View Count', fontsize=12)
     ax1.legend(fontsize=12)
     ax1.grid(True, alpha=0.3)
@@ -144,7 +166,7 @@ def plot_combined_results(
                 ax2.axvspan(start_date, end_date,
                            alpha=0.4, color='orange',
                            label='Predicted Trend Anomaly' if i == 0 else "")
-        ax2.set_title('Reconstruction Loss for Trend Anomalies (A component)', fontsize=16)
+        ax2.set_title('Reconstruction Loss for Trend Anomalies (A component) - First 2 Months', fontsize=16)
         ax2.set_ylabel('Loss Value', fontsize=12)
         ax2.legend(fontsize=12)
         ax2.grid(True, alpha=0.3)
@@ -159,14 +181,22 @@ def plot_combined_results(
             ax3.scatter([dates.iloc[i] for i in other_anomaly_indices],
                        [loss_d[i] for i in other_anomaly_indices],
                        color='red', s=100, zorder=5, label='Predicted Point Anomaly')
-        ax3.set_title('Reconstruction Loss for Point Anomalies (D component)', fontsize=16)
+        ax3.set_title('Reconstruction Loss for Point Anomalies (D component) - First 2 Months', fontsize=16)
         ax3.set_ylabel('Loss Value', fontsize=12)
         ax3.legend(fontsize=12)
         ax3.grid(True, alpha=0.3)
 
     # Cài đặt chung
     ax3.set_xlabel('Date', fontsize=12)
-    plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45)
+    
+    # Cài đặt hiển thị ngày cụ thể trên trục x
+    ax3.xaxis.set_major_locator(plt.MaxNLocator(nbins=10))  # Tối đa 10 nhãn ngày
+    plt.setp(ax3.xaxis.get_majorticklabels(), rotation=45, ha='right')
+    
+    # Format ngày hiển thị
+    import matplotlib.dates as mdates
+    ax3.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    
     plt.tight_layout()
     
     if save_path:
@@ -184,7 +214,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
     
     model, _ = load_model(model_path)
     
-    output_dir = 'inference_results'
+    output_dir = 'inference_results_combined_2months'
     os.makedirs(output_dir, exist_ok=True)
     
     results = []
@@ -205,8 +235,8 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         scaler = RobustScaler()
         time_series_scaled = scaler.fit_transform(time_series.reshape(-1, 1)).flatten()
         
-        _, d_np = kama_decomposition(time_series_scaled)
         a_np, _ = stl_decomposition(time_series_scaled)
+        _, d_np = kama_decomposition(time_series_scaled)
         
         a_tensor = torch.FloatTensor(a_np.copy()).unsqueeze(0).unsqueeze(-1)
         d_tensor = torch.FloatTensor(d_np.copy()).unsqueeze(0).unsqueeze(-1)
@@ -226,11 +256,14 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         
         # 2. Phát hiện Other Anomalies (từ loss_d)
         threshold_d = np.percentile(loss_d, other_percentile)
-        other_anomaly_indices = np.where(loss_d >= threshold_d)[0]
+        other_anomaly_indices_raw = np.where(loss_d >= threshold_d)[0]
+        
+        # Lọc bỏ nhóm point anomalies có ít hơn 3 điểm liên tiếp
+        other_anomaly_indices = filter_anomaly_groups(other_anomaly_indices_raw, min_group_size=3)
         
         print(f"  - Raw trend anomalies ({trend_percentile}th percentile on loss_a): {len(trend_anomaly_indices_raw)} points")
         print(f"  - Filtered trend anomalies (≥3 consecutive points): {len(trend_anomaly_indices)} points")
-        print(f"  - Raw point anomalies ({other_percentile}th percentile on loss_d): {len(other_anomaly_indices)} points")
+        print(f"  - Raw point anomalies ({other_percentile}th percentile on loss_d): {len(other_anomaly_indices_raw)} points")
         print(f"  - Filtered point anomalies (≥3 consecutive points): {len(other_anomaly_indices)} points")
 
         plot_path = os.path.join(output_dir, f'combined_{i+1}_{place_id}.png')
@@ -245,7 +278,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
             'place_id': place_id,
             'num_trend_anomalies_raw': len(trend_anomaly_indices_raw),
             'num_trend_anomalies_filtered': len(trend_anomaly_indices),
-            'num_point_anomalies_raw': len(other_anomaly_indices),
+            'num_point_anomalies_raw': len(other_anomaly_indices_raw),
             'num_point_anomalies_filtered': len(other_anomaly_indices),
             'threshold_a': threshold_a,
             'threshold_d': threshold_d,

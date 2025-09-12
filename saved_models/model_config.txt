@@ -2,12 +2,16 @@
 Input Dimension: 1
 KAN Output Features: 32
 Number of Experts: 8
-Decoder Hidden Dimension: 128
-Total Parameters: 9,426
+Total Parameters: 42,528
 
 === TRAINING STATISTICS ===
 Places Processed: 315
-Average Reconstruction Loss: 0.186822
-Std Reconstruction Loss: 0.443897
-Min Reconstruction Loss: 0.001137
-Max Reconstruction Loss: 5.509768
+Train Samples: 283
+Test Samples: 32
+Total Epochs: 45
+Final Train Loss: 0.041779
+Best Validation Loss: 0.030622
+Average Reconstruction Loss: 0.033460
+Std Reconstruction Loss: 0.046703
+Min Reconstruction Loss: 0.001623
+Max Reconstruction Loss: 0.249800

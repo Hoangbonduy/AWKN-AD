@@ -14,9 +14,8 @@ raw_df_one_place.set_index('date', inplace=True)
 
 
 # Đọc hệ số xấp xỉ và chi tiết
-window_size = 31
-approx = pd.read_csv('kama_approximation_placeId_4624474044569362538.csv')
-detail = pd.read_csv('kama_detail_coeffs_placeId_4624474044569362538.csv')
+approx = pd.read_csv('STL_approximation_placeId_4624474044569362538.csv')
+detail = pd.read_csv('STL_detail_coeffs_placeId_4624474044569362538.csv')
 original = raw_df_one_place['view']
 
 
@@ -36,7 +35,7 @@ axs[0].grid(True, which='both', linestyle='--', linewidth=0.5)
 
 # 2. Biểu đồ Hệ số Xấp xỉ (a)
 axs[1].plot(approx, color='royalblue', linewidth=1.8, linestyle='-', label='Xấp xỉ `a` (Xu hướng)')
-axs[1].set_title('Thành phần Xấp xỉ (a)', fontsize=14)
+axs[1].set_title('Thành phần Xấp xỉ (s - seasonal)', fontsize=14)
 axs[1].set_ylabel('Giá trị', fontsize=12)
 axs[1].legend(loc='upper left')
 axs[1].grid(True, which='both', linestyle='--', linewidth=0.5)
@@ -56,7 +55,7 @@ fig.autofmt_xdate()
 plt.tight_layout(rect=[0, 0.03, 1, 0.97])
 
 # Lưu lại file ảnh
-output_filename = f'plot_decomposition_placeId_{first_place_id}.png'
+output_filename = f'STL_plot_decomposition_placeId_{first_place_id}.png'
 plt.savefig(output_filename)
 
 print(f"Đã lưu biểu đồ cải tiến vào file: {output_filename}")
