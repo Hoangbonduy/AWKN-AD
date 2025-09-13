@@ -87,6 +87,19 @@ def stl_decomposition(time_series: np.ndarray, period: int = 7, robust: bool = T
     
     return a.values, d.values # Trả về numpy array để nhất quán
 
+def stl_decomposition_2(time_series: np.ndarray, period: int = 7, robust: bool = True):
+    # Chuyển sang pandas Series để dùng STL, vì nó xử lý index tốt hơn
+    series = pd.Series(time_series)
+
+    # Thực hiện phân rã STL
+    # period là tham số quan trọng nhất của STL
+    stl_result = STL(series, period=period, robust=robust).fit()
+
+    a = stl_result.trend
+    new_series = series - a
+
+    return a.values, new_series.values # Trả về numpy array để nhất quán
+
 # --- Chạy ví dụ ---
 # Giả sử bạn có file 'place.csv' đã được tiền xử lý
 if __name__ == "__main__":
@@ -119,16 +132,24 @@ if __name__ == "__main__":
             a_series = pd.Series(a_values)
             d_series = pd.Series(d_values)
 
+            # a_values, new_series = stl_decomposition_2(time_series)
+
             print(f"\n--- Kết quả cho placeId: {first_place_id} ---")
             print("Hệ số Xấp xỉ (a - Chuỗi xu hướng STL):")
-            print(a_series.head())
-            a_series.to_csv(f'STL_approximation_placeId_{first_place_id}.csv', index=False, header=['view'])
+            print(a_values[:5])  # In 5 phần tử đầu của numpy array
+            
+            # Chuyển đổi thành pandas Series để lưu file
+            a_series = pd.Series(a_values)
+            a_series.to_csv(f'2_STL_approximation_placeId_{first_place_id}.csv', index=False, header=['view'])
             
             print("\nHệ số Chi tiết (d - Chuỗi biến động STL):")
-            print(d_series.head())
-            d_series.to_csv(f'STL_detail_coeffs_placeId_{first_place_id}.csv', index=False, header=['view'])
+            print(d_values[:5])  # In 5 phần tử đầu của numpy array
             
-            print(f"\nĐã lưu kết quả vào file STL_approximation_placeId_{first_place_id}.csv và STL_detail_coeffs_placeId_{first_place_id}.csv")
+            # Chuyển đổi thành pandas Series để lưu file
+            d_series = pd.Series(d_values)
+            d_series.to_csv(f'2_STL_detail_coeffs_placeId_{first_place_id}.csv', index=False, header=['view'])
+
+            print(f"\nĐã lưu kết quả vào file 2_STL_approximation_placeId_{first_place_id}.csv và 2_STL_detail_coeffs_placeId_{first_place_id}.csv")
             print("\n" + "="*50 + "\n")
         else:
             print(f"File {DATA_PATH} trống hoặc không đúng định dạng.")

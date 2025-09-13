@@ -184,7 +184,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
     
     model, _ = load_model(model_path)
     
-    output_dir = 'inference_results'
+    output_dir = 'inference_results_2'
     os.makedirs(output_dir, exist_ok=True)
     
     results = []
@@ -205,8 +205,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         scaler = RobustScaler()
         time_series_scaled = scaler.fit_transform(time_series.reshape(-1, 1)).flatten()
         
-        _, d_np = kama_decomposition(time_series_scaled)
-        a_np, _ = stl_decomposition(time_series_scaled)
+        a_np, d_np = stl_decomposition(time_series_scaled)
         
         a_tensor = torch.FloatTensor(a_np.copy()).unsqueeze(0).unsqueeze(-1)
         d_tensor = torch.FloatTensor(d_np.copy()).unsqueeze(0).unsqueeze(-1)

@@ -81,41 +81,41 @@ def decompose_by_place_id(dataframe: pd.DataFrame):
 
 # --- Chạy ví dụ ---
 # Giả sử bạn có file 'place.csv' đã được tiền xử lý
-# if __name__ == "__main__":
-#     DATA_PATH = 'data/cleaned_data_after_idx30.csv'
-#     try:
-#         df = pd.read_csv(DATA_PATH)
+if __name__ == "__main__":
+    DATA_PATH = 'data/cleaned_data_after_idx30.csv'
+    try:
+        df = pd.read_csv(DATA_PATH)
         
-#         # Chỉ lấy placeId đầu tiên để làm ví dụ
-#         if not df.empty:
-#             first_place_id = df['placeId'].iloc[0]
-#             df_one_place = df[df['placeId'] == first_place_id]
+        # Chỉ lấy placeId đầu tiên để làm ví dụ
+        if not df.empty:
+            first_place_id = df['placeId'].iloc[0]
+            df_one_place = df[df['placeId'] == first_place_id]
 
-#             scaler = RobustScaler()
-#             df_one_place['view'] = scaler.fit_transform(df_one_place[['view']])
+            scaler = RobustScaler()
+            df_one_place['view'] = scaler.fit_transform(df_one_place[['view']])
 
-#             # Chạy hàm phân rã bằng KAMA
-#             final_results = decompose_by_place_id(df_one_place)
+            # Chạy hàm phân rã bằng KAMA
+            final_results = decompose_by_place_id(df_one_place)
 
-#             print("=== KẾT QUẢ CHO 1 ĐỊA ĐIỂM DUY NHẤT (SỬ DỤNG KAMA) ===")
-#             for place_id, data in final_results.items():
-#                 # Chuyển đổi lại thành pandas Series để xem và lưu file
-#                 a_series = pd.Series(data['a (approximation)'])
-#                 d_series = pd.Series(data['d (detail)'])
+            print("=== KẾT QUẢ CHO 1 ĐỊA ĐIỂM DUY NHẤT (SỬ DỤNG KAMA) ===")
+            for place_id, data in final_results.items():
+                # Chuyển đổi lại thành pandas Series để xem và lưu file
+                a_series = pd.Series(data['a (approximation)'])
+                d_series = pd.Series(data['d (detail)'])
 
-#                 print(f"\n--- Kết quả cho placeId: {place_id} ---")
-#                 print("Hệ số Xấp xỉ (a - Chuỗi xu hướng KAMA):")
-#                 print(a_series.head())
-#                 a_series.to_csv(f'kama_approximation_placeId_{place_id}.csv', index=False, header=['view'])
+                print(f"\n--- Kết quả cho placeId: {place_id} ---")
+                print("Hệ số Xấp xỉ (a - Chuỗi xu hướng KAMA):")
+                print(a_series.head())
+                a_series.to_csv(f'kama_approximation_placeId_{place_id}.csv', index=False, header=['view'])
                 
-#                 print("\nHệ số Chi tiết (d - Chuỗi biến động KAMA):")
-#                 print(d_series.head())
-#                 d_series.to_csv(f'kama_detail_coeffs_placeId_{place_id}.csv', index=False, header=['view'])
+                print("\nHệ số Chi tiết (d - Chuỗi biến động KAMA):")
+                print(d_series.head())
+                d_series.to_csv(f'kama_detail_coeffs_placeId_{place_id}.csv', index=False, header=['view'])
                 
-#                 print(f"\nĐã lưu kết quả vào file kama_approximation_placeId_{place_id}.csv và kama_detail_coeffs_placeId_{place_id}.csv")
-#                 print("\n" + "="*50 + "\n")
-#         else:
-#             print(f"File {DATA_PATH} trống hoặc không đúng định dạng.")
+                print(f"\nĐã lưu kết quả vào file kama_approximation_placeId_{place_id}.csv và kama_detail_coeffs_placeId_{place_id}.csv")
+                print("\n" + "="*50 + "\n")
+        else:
+            print(f"File {DATA_PATH} trống hoặc không đúng định dạng.")
 
-#     except FileNotFoundError:
-#         print(f"Lỗi: Không tìm thấy file tại đường dẫn '{DATA_PATH}'. Vui lòng kiểm tra lại.")
+    except FileNotFoundError:
+        print(f"Lỗi: Không tìm thấy file tại đường dẫn '{DATA_PATH}'. Vui lòng kiểm tra lại.")

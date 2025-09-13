@@ -16,6 +16,7 @@ data/
 !inference_results/
 !model_architecture/
 !results/
+!inference_results_2/
 
 # Python cache files
 __pycache__/
