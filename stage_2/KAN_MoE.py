@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from spline import LearnableSplineExperts
+from .spline import LearnableSplineExperts
 
 class KANMoELayer(nn.Module):
     def __init__(self, in_features, out_features, num_experts=8, grid_size=10, degree=3):

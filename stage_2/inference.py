@@ -184,7 +184,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
     
     model, _ = load_model(model_path)
     
-    output_dir = 'inference_results_2'
+    output_dir = 'inference_results'
     os.makedirs(output_dir, exist_ok=True)
     
     results = []
@@ -205,14 +205,15 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         scaler = RobustScaler()
         time_series_scaled = scaler.fit_transform(time_series.reshape(-1, 1)).flatten()
         
-        a_np, d_np = stl_decomposition(time_series_scaled)
+        _, d_np = kama_decomposition(time_series_scaled)
+        a_np, _ = stl_decomposition(time_series_scaled)
         
         a_tensor = torch.FloatTensor(a_np.copy()).unsqueeze(0).unsqueeze(-1)
         d_tensor = torch.FloatTensor(d_np.copy()).unsqueeze(0).unsqueeze(-1)
         
         with torch.no_grad():
             reconstructed_a, reconstructed_d = model(a_tensor, d_tensor)
-            loss_fn = torch.nn.HuberLoss(reduction='none')
+            loss_fn = torch.nn.MSELoss(reduction='none')
             loss_a = loss_fn(reconstructed_a, a_tensor).squeeze().numpy()
             loss_d = loss_fn(reconstructed_d, d_tensor).squeeze().numpy()
         
@@ -225,7 +226,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         
         # 2. Phát hiện Other Anomalies (từ loss_d)
         threshold_d = np.percentile(loss_d, other_percentile)
-        other_anomaly_indices = np.where(loss_d >= threshold_d)[0]
+        other_anomaly_indices = np.where(loss_d > threshold_d)[0]
         
         print(f"  - Raw trend anomalies ({trend_percentile}th percentile on loss_a): {len(trend_anomaly_indices_raw)} points")
         print(f"  - Filtered trend anomalies (≥3 consecutive points): {len(trend_anomaly_indices)} points")
@@ -277,7 +278,7 @@ if __name__ == "__main__":
     # Đường dẫn
     DATA_PATH = 'data/cleaned_data_no_zero_periods_filtered.csv'
     LABELS_DIR = 'new_labels_2'
-    MODEL_PATH = 'saved_models/autoencoder_model.pth'
+    MODEL_PATH = 'saved_models_2/autoencoder_model.pth'
     
     # Kiểm tra sự tồn tại của file
     for path in [DATA_PATH, LABELS_DIR, MODEL_PATH]:

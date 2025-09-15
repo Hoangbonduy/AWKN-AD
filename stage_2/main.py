@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.model_selection import train_test_split
 from stage_1.STL import stl_decomposition, clean_and_augment_d
+from stage_1.KAMA import kama_decomposition
 from stage_2.AE import TimeSeriesAutoencoder
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import RobustScaler
@@ -117,9 +118,10 @@ if __name__ == "__main__":
     # --- 1. Nạp và Chuẩn bị Dữ liệu ---
     DATA_PATH = 'data/cleaned_data_after_idx30.csv'
     MODEL_SAVE_DIR = 'saved_models'  # Thư mục lưu model cuối cùng
+    os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
     MODEL_SAVE_PATH = os.path.join(MODEL_SAVE_DIR, 'autoencoder_model.pth')
 
-    KAN_out_features = 32  # Số đặc trưng đầu ra từ mỗi KANMoELayer
+    KAN_out_features = 16  # Số đặc trưng đầu ra từ mỗi KANMoELayer (đã sửa từ 32 -> 16)
     feature_dim = KAN_out_features * 2  # Tổng số đặc trưng sau
 
     try:
@@ -164,7 +166,7 @@ if __name__ == "__main__":
 
             a_np, d_np = stl_decomposition(place_data_scaled)
 
-            d_np = clean_and_augment_d(d_np, method='mad')  # Clean và augment detail component
+            d_np = clean_and_augment_d(d_np, method='mad', noise_scale=0.5)  # Clean và augment detail component
 
             all_a_data.append(a_np)
             all_d_data.append(d_np)
@@ -224,7 +226,7 @@ if __name__ == "__main__":
                 reconstructed_a, reconstructed_d = autoencoder(a_batch, d_batch)
 
                 # Tính loss với mask
-                loss_fn = nn.HuberLoss(reduction='none')
+                loss_fn = nn.MSELoss(reduction='none')
                 loss_a = masked_loss(reconstructed_a, a_batch, mask_batch, loss_fn)
                 loss_d = masked_loss(reconstructed_d, d_batch, mask_batch, loss_fn)
                 total_loss = loss_a + loss_d
@@ -248,7 +250,7 @@ if __name__ == "__main__":
                     reconstructed_a, reconstructed_d = autoencoder(a_batch, d_batch)
                     
                     # Tính validation loss
-                    loss_fn = nn.HuberLoss(reduction='none')
+                    loss_fn = nn.MSELoss(reduction='none')
                     loss_a = masked_loss(reconstructed_a, a_batch, mask_batch, loss_fn)
                     loss_d = masked_loss(reconstructed_d, d_batch, mask_batch, loss_fn)
                     total_loss = loss_a + loss_d
@@ -307,8 +309,8 @@ if __name__ == "__main__":
                 # Forward pass
                 reconstructed_a, reconstructed_d = autoencoder(a_seq, d_seq)
                 
-                # Tính loss với mask và HuberLoss
-                loss_fn = nn.HuberLoss(reduction='none')
+                # Tính loss với mask và MSELoss
+                loss_fn = nn.MSELoss(reduction='none')
                 loss_a = masked_loss(reconstructed_a, a_seq, mask_seq, loss_fn).item()
                 loss_d = masked_loss(reconstructed_d, d_seq, mask_seq, loss_fn).item()
                 total_loss = loss_a + loss_d

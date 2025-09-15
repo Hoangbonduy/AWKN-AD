@@ -3,26 +3,45 @@ import numpy as np
 import pandas_ta as ta # Thư viện mới để tính KAMA
 from sklearn.preprocessing import RobustScaler
 from scipy.stats import zscore
+from statsmodels.robust import mad
 
-def clean_and_augment_d(d, z_threshold=3.0, noise_scale=0.1):
+def clean_and_augment_d(d, method='mad', threshold=3.5, noise_scale=0.5):
     """
-    Clean outliers trong d và augment.
+    Làm sạch ngoại lệ trong d và tăng cường dữ liệu.
+    
     Args:
-        d: numpy array của detail component.
-        z_threshold: |z| > this là outlier (default 3 cho extreme).
-        noise_scale: Scale noise cho augmentation (0.1 * std).
+        d (np.ndarray): Mảng numpy của thành phần phần dư.
+        method (str): Phương pháp phát hiện ngoại lệ. 'mad' (mặc định) hoặc 'zscore'.
+        threshold (float): Ngưỡng để xác định một điểm là ngoại lệ.
+                           Mặc định là 3.5 cho MAD.
+        noise_scale (float): Tỷ lệ nhiễu để tăng cường dữ liệu.
+        
     Returns:
-        d_aug: d sau clean và augment.
+        d_aug (np.ndarray): Mảng d sau khi đã làm sạch và tăng cường.
     """
-    # Bước 2: Tính z-score
-    z_d = zscore(d)
-    
-    # Bước 3: Detect và replace outliers bằng median
-    outliers = np.abs(z_d) > z_threshold
+    d_clean = d.copy()
     median_d = np.median(d)
-    d_clean = np.where(outliers, median_d, d)
     
-    # Bước 4: Augmentation bằng add noise
+    if method == 'mad':
+        # Sử dụng Median Absolute Deviation (MAD) - Mạnh mẽ hơn Z-score
+        # MAD tính toán độ lệch so với trung vị, ít bị ảnh hưởng bởi ngoại lệ.
+        # hằng số 0.6745 giúp mad tương đương với độ lệch chuẩn của phân phối chuẩn.
+        d_mad = mad(d, c=0.6745)
+        
+        # Tránh chia cho 0 nếu chuỗi dữ liệu không có biến động
+        if d_mad > 1e-8:
+            # Tính điểm số dựa trên MAD
+            mad_score = np.abs(d - median_d) / d_mad
+            outliers = mad_score > threshold
+            d_clean = np.where(outliers, median_d, d)
+            
+    elif method == 'zscore':
+        # Giữ lại phương pháp Z-score nếu bạn muốn so sánh
+        z_d = zscore(d)
+        outliers = np.abs(z_d) > threshold
+        d_clean = np.where(outliers, median_d, d)
+
+    # Augmentation: Thêm nhiễu dựa trên độ lệch chuẩn của dữ liệu đã làm sạch
     std_clean = np.std(d_clean)
     noise = np.random.normal(0, noise_scale * std_clean, len(d_clean))
     d_aug = d_clean + noise
@@ -103,14 +122,20 @@ if __name__ == "__main__":
                 a_series = pd.Series(data['a (approximation)'])
                 d_series = pd.Series(data['d (detail)'])
 
+                # Clean và augment detail component - trả về numpy array
+                d_cleaned = clean_and_augment_d(d_series.values)  
+
                 print(f"\n--- Kết quả cho placeId: {place_id} ---")
                 print("Hệ số Xấp xỉ (a - Chuỗi xu hướng KAMA):")
                 print(a_series.head())
                 a_series.to_csv(f'kama_approximation_placeId_{place_id}.csv', index=False, header=['view'])
                 
                 print("\nHệ số Chi tiết (d - Chuỗi biến động KAMA):")
-                print(d_series.head())
-                d_series.to_csv(f'kama_detail_coeffs_placeId_{place_id}.csv', index=False, header=['view'])
+                print(d_cleaned[:5])  # In 5 phần tử đầu của numpy array
+                
+                # Chuyển numpy array thành pandas Series để lưu file
+                d_cleaned_series = pd.Series(d_cleaned)
+                d_cleaned_series.to_csv(f'kama_detail_coeffs_placeId_{place_id}.csv', index=False, header=['view'])
                 
                 print(f"\nĐã lưu kết quả vào file kama_approximation_placeId_{place_id}.csv và kama_detail_coeffs_placeId_{place_id}.csv")
                 print("\n" + "="*50 + "\n")

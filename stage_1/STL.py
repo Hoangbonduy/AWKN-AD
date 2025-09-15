@@ -7,7 +7,7 @@ from scipy.stats import zscore
 from sklearn.preprocessing import RobustScaler
 
 # --- CÁC HÀM CŨ CỦA BẠN (giữ nguyên) ---
-def clean_and_augment_d(d, method='mad', threshold=3.5, noise_scale=0.85):
+def clean_and_augment_d(d, method='mad', threshold=3.5, noise_scale=0.5):
     """
     Làm sạch ngoại lệ trong d và tăng cường dữ liệu.
     

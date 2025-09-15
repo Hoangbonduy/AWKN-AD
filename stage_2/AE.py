@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from KAN_MoE import KANMoELayer
+from .KAN_MoE import KANMoELayer
 
 # <<< THAY ĐỔI 1 >>>: Thêm một khối CNN để xử lý thông tin thời gian
 class TemporalBlock(nn.Module):
