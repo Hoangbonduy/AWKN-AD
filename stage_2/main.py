@@ -163,7 +163,7 @@ if __name__ == "__main__":
             scaler = RobustScaler()
             place_data_scaled = scaler.fit_transform(place_data.reshape(-1, 1)).flatten()
 
-            a_np, d_np = stl_decomposition(place_data_scaled)
+            a_np, d_np = stl_decomposition(place_data_scaled, period=7, robust=True)
 
             d_np = clean_and_augment_d(d_np, method='mad', noise_scale=0.5)  # Clean và augment detail component
 

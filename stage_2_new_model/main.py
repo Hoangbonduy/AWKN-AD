@@ -120,7 +120,7 @@ if __name__ == "__main__":
     os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
     MODEL_SAVE_PATH = os.path.join(MODEL_SAVE_DIR, 'autoencoder_model.pth')
 
-    KAN_out_features = 16  # Số đặc trưng đầu ra từ mỗi KANMoELayer (đã sửa từ 32 -> 16)
+    KAN_out_features = 4  # Số đặc trưng đầu ra từ mỗi KANMoELayer (đã sửa từ 32 -> 16)
     feature_dim = KAN_out_features * 2  # Tổng số đặc trưng sau
 
     try:
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         print(f"Tổng số địa điểm: {len(place_ids)}")
         
         # Thêm một hằng số cho GRU hidden dimension
-        GRU_hidden_dim = 32 # Bạn có thể tùy chỉnh giá trị này
+        GRU_hidden_dim = 8 # Bạn có thể tùy chỉnh giá trị này
 
         # Khởi tạo Autoencoder một lần với tham số mới
         autoencoder = TimeSeriesAutoencoder(
@@ -166,9 +166,9 @@ if __name__ == "__main__":
             scaler = RobustScaler()
             place_data_scaled = scaler.fit_transform(place_data.reshape(-1, 1)).flatten()
 
-            a_np, d_np = stl_decomposition_2(place_data_scaled, period=29, robust=True)
+            a_np, d_np = stl_decomposition(place_data_scaled,period=7,robust=True)
 
-            d_np = clean_d(d_np) # Clean và augment detail component
+            d_np = clean_and_augment_d(d_np)
 
             all_a_data.append(a_np)
             all_d_data.append(d_np)

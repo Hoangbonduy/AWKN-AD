@@ -17,6 +17,7 @@ data/
 !model_architecture/
 !results/
 !stage_2_new_model/
+!inference_results_he_kan/
 
 # Python cache files
 __pycache__/

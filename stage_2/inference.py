@@ -133,9 +133,9 @@ def plot_combined_results(
     ax1.legend(fontsize=12)
     ax1.grid(True, alpha=0.3)
 
-    # === BIỂU ĐỒ 2: RECONSTRUCTION LOSS (A COMPONENT) ===
+    # === BIỂU ĐỒ 2: RECONSTRUCTION ERROR (A COMPONENT) ===
     if loss_a is not None:
-        ax2.plot(dates, loss_a, 'g-', linewidth=1, alpha=0.7, label='Reconstruction Loss (A component)')
+        ax2.plot(dates, loss_a, 'g-', linewidth=1, alpha=0.7, label='MSE Reconstruction Loss (A component)')
         if len(trend_anomaly_indices) > 0:
             anomaly_groups = group_consecutive_indices(trend_anomaly_indices, max_gap=2)
             for i, (start_idx, end_idx) in enumerate(anomaly_groups):
@@ -144,23 +144,23 @@ def plot_combined_results(
                 ax2.axvspan(start_date, end_date,
                            alpha=0.4, color='orange',
                            label='Predicted Trend Anomaly' if i == 0 else "")
-        ax2.set_title('Reconstruction Loss for Trend Anomalies (A component)', fontsize=16)
-        ax2.set_ylabel('Loss Value', fontsize=12)
+        ax2.set_title('MSE Reconstruction Loss for Trend Anomalies (A component)', fontsize=16)
+        ax2.set_ylabel('MSE Loss', fontsize=12)
         ax2.legend(fontsize=12)
         ax2.grid(True, alpha=0.3)
 
-    # === BIỂU ĐỒ 3: RECONSTRUCTION LOSS (D COMPONENT) ===
+    # === BIỂU ĐỒ 3: RECONSTRUCTION ERROR (D COMPONENT) ===
     if loss_d is not None:
-        ax3.plot(dates, loss_d, 'm-', linewidth=1, alpha=0.7, label='Reconstruction Loss (D component)')
+        ax3.plot(dates, loss_d, 'm-', linewidth=1, alpha=0.7, label='MSE Reconstruction Loss (D component)')
         if threshold_d is not None:
             ax3.axhline(y=threshold_d, color='red', linestyle='--', linewidth=2,
-                       label=f'99th Percentile Threshold ({threshold_d:.4f})')
+                       label=f'98th Percentile Threshold ({threshold_d:.4f})')
         if len(other_anomaly_indices) > 0:
             ax3.scatter([dates.iloc[i] for i in other_anomaly_indices],
                        [loss_d[i] for i in other_anomaly_indices],
                        color='red', s=100, zorder=5, label='Predicted Point Anomaly')
-        ax3.set_title('Reconstruction Loss for Point Anomalies (D component)', fontsize=16)
-        ax3.set_ylabel('Loss Value', fontsize=12)
+        ax3.set_title('MSE Reconstruction Loss for Point Anomalies (D component)', fontsize=16)
+        ax3.set_ylabel('MSE Loss', fontsize=12)
         ax3.legend(fontsize=12)
         ax3.grid(True, alpha=0.3)
 
@@ -206,31 +206,34 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         time_series_scaled = scaler.fit_transform(time_series.reshape(-1, 1)).flatten()
         
         _, d_np = kama_decomposition(time_series_scaled)
-        a_np, _ = stl_decomposition(time_series_scaled)
+        a_np, _ = stl_decomposition(time_series_scaled, period=7)
         
         a_tensor = torch.FloatTensor(a_np.copy()).unsqueeze(0).unsqueeze(-1)
         d_tensor = torch.FloatTensor(d_np.copy()).unsqueeze(0).unsqueeze(-1)
         
         with torch.no_grad():
             reconstructed_a, reconstructed_d = model(a_tensor, d_tensor)
+            reconstructed_a_np = reconstructed_a.squeeze().cpu().numpy()
+            reconstructed_d_np = reconstructed_d.squeeze().cpu().numpy()
+            
+            # Tính MSE loss đúng cách với tensor
             loss_fn = torch.nn.MSELoss(reduction='none')
-            loss_a = loss_fn(reconstructed_a, a_tensor).squeeze().numpy()
-            loss_d = loss_fn(reconstructed_d, d_tensor).squeeze().numpy()
-        
-        # 1. Phát hiện Trend Anomalies (từ loss_a)
+            loss_a = loss_fn(reconstructed_a, a_tensor).squeeze().cpu().numpy()
+            loss_d = loss_fn(reconstructed_d, d_tensor).squeeze().cpu().numpy()
+        # 1. Phát hiện Trend Anomalies (từ MSE loss của 'a')
         threshold_a = np.percentile(loss_a, trend_percentile)
-        trend_anomaly_indices_raw = np.where(loss_a > threshold_a)[0]
+        trend_anomaly_indices_raw = np.where(loss_a >= threshold_a)[0]
         
         # Lọc bỏ nhóm trend anomalies có ít hơn 3 điểm liên tiếp
         trend_anomaly_indices = filter_anomaly_groups(trend_anomaly_indices_raw, min_group_size=3)
         
-        # 2. Phát hiện Other Anomalies (từ loss_d)
+        # 2. Phát hiện Other Anomalies (từ MSE loss của 'd')
         threshold_d = np.percentile(loss_d, other_percentile)
-        other_anomaly_indices = np.where(loss_d > threshold_d)[0]
+        other_anomaly_indices = np.where(loss_d >= threshold_d)[0]
         
-        print(f"  - Raw trend anomalies ({trend_percentile}th percentile on loss_a): {len(trend_anomaly_indices_raw)} points")
+        print(f"  - Raw trend anomalies ({trend_percentile}th percentile on MSE loss of a): {len(trend_anomaly_indices_raw)} points")
         print(f"  - Filtered trend anomalies (≥3 consecutive points): {len(trend_anomaly_indices)} points")
-        print(f"  - Raw point anomalies ({other_percentile}th percentile on loss_d): {len(other_anomaly_indices)} points")
+        print(f"  - Raw point anomalies ({other_percentile}th percentile on MSE loss of d): {len(other_anomaly_indices)} points")
         print(f"  - Filtered point anomalies (≥3 consecutive points): {len(other_anomaly_indices)} points")
 
         plot_path = os.path.join(output_dir, f'combined_{i+1}_{place_id}.png')
@@ -278,7 +281,7 @@ if __name__ == "__main__":
     # Đường dẫn
     DATA_PATH = 'data/cleaned_data_no_zero_periods_filtered.csv'
     LABELS_DIR = 'new_labels_2'
-    MODEL_PATH = 'saved_models_2/autoencoder_model.pth'
+    MODEL_PATH = 'saved_models/autoencoder_model.pth'
     
     # Kiểm tra sự tồn tại của file
     for path in [DATA_PATH, LABELS_DIR, MODEL_PATH]:

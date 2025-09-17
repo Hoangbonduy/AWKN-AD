@@ -1,17 +1,17 @@
 === AUTOENCODER MODEL CONFIGURATION ===
 Input Dimension: 1
-KAN Output Features: 32
+KAN Output Features: 16
 Number of Experts: 8
-Total Parameters: 42,528
+Total Parameters: 11,232
 
 === TRAINING STATISTICS ===
 Places Processed: 315
 Train Samples: 283
 Test Samples: 32
-Total Epochs: 45
-Final Train Loss: 0.041779
-Best Validation Loss: 0.030622
-Average Reconstruction Loss: 0.033460
-Std Reconstruction Loss: 0.046703
-Min Reconstruction Loss: 0.001623
-Max Reconstruction Loss: 0.249800
+Total Epochs: 61
+Final Train Loss: 0.081278
+Best Validation Loss: 0.081083
+Average Reconstruction Loss: 0.072966
+Std Reconstruction Loss: 0.145001
+Min Reconstruction Loss: 0.000800
+Max Reconstruction Loss: 1.248370
