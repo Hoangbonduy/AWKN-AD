@@ -50,8 +50,46 @@ def clean_and_augment_d(d, method='mad', threshold=3.5, noise_scale=0.5):
     
     return d_aug
 
+def clean_d(d, method='mad', threshold=3.5):
+    """
+    Làm sạch ngoại lệ trong d và tăng cường dữ liệu.
+    
+    Args:
+        d (np.ndarray): Mảng numpy của thành phần phần dư.
+        method (str): Phương pháp phát hiện ngoại lệ. 'mad' (mặc định) hoặc 'zscore'.
+        threshold (float): Ngưỡng để xác định một điểm là ngoại lệ.
+                           Mặc định là 3.5 cho MAD.
+        noise_scale (float): Tỷ lệ nhiễu để tăng cường dữ liệu.
+        
+    Returns:
+        d_aug (np.ndarray): Mảng d sau khi đã làm sạch và tăng cường.
+    """
+    d_clean = d.copy()
+    median_d = np.median(d)
+    
+    if method == 'mad':
+        # Sử dụng Median Absolute Deviation (MAD) - Mạnh mẽ hơn Z-score
+        # MAD tính toán độ lệch so với trung vị, ít bị ảnh hưởng bởi ngoại lệ.
+        # hằng số 0.6745 giúp mad tương đương với độ lệch chuẩn của phân phối chuẩn.
+        d_mad = mad(d, c=0.6745)
+        
+        # Tránh chia cho 0 nếu chuỗi dữ liệu không có biến động
+        if d_mad > 1e-8:
+            # Tính điểm số dựa trên MAD
+            mad_score = np.abs(d - median_d) / d_mad
+            outliers = mad_score > threshold
+            d_clean = np.where(outliers, median_d, d)
+            
+    elif method == 'zscore':
+        # Giữ lại phương pháp Z-score nếu bạn muốn so sánh
+        z_d = zscore(d)
+        outliers = np.abs(z_d) > threshold
+        d_clean = np.where(outliers, median_d, d)
+
+    return d_clean
+
 # --- HÀM MỚI SỬ DỤNG STL ---
-def stl_decomposition(time_series: np.ndarray, period: int = 7, robust: bool = True):
+def stl_decomposition(time_series: np.ndarray, period: int = 28, robust: bool = True):
     """
     Tầng 1: Phân rã chuỗi thời gian bằng phương pháp STL (Seasonal-Trend decomposition using Loess).
     - a: Thành phần Xu hướng (trend).
@@ -87,7 +125,7 @@ def stl_decomposition(time_series: np.ndarray, period: int = 7, robust: bool = T
     
     return a.values, d.values # Trả về numpy array để nhất quán
 
-def stl_decomposition_2(time_series: np.ndarray, period: int = 7, robust: bool = True):
+def stl_decomposition_2(time_series: np.ndarray, period: int = 29, robust: bool = True):
     # Chuyển sang pandas Series để dùng STL, vì nó xử lý index tốt hơn
     series = pd.Series(time_series)
 
@@ -96,7 +134,10 @@ def stl_decomposition_2(time_series: np.ndarray, period: int = 7, robust: bool =
     stl_result = STL(series, period=period, robust=robust).fit()
 
     a = stl_result.trend
+    a = a.bfill().ffill()
+
     new_series = series - a
+    new_series = new_series.bfill().ffill()
 
     return a.values, new_series.values # Trả về numpy array để nhất quán
 
@@ -122,9 +163,10 @@ if __name__ == "__main__":
             time_series = df_one_place['view'].values
 
             # Chạy hàm phân rã bằng STL
-            a_values, d_values = stl_decomposition(time_series)
+            a_values, d_values = stl_decomposition_2(time_series)
 
-            d_values = clean_and_augment_d(d_values)  # Clean và augment detail component
+            # d_values = clean_and_augment_d(d_values)  # Clean và augment detail component
+            d_values = clean_d(d_values)  # Chỉ làm sạch không augment
 
             print("=== KẾT QUẢ CHO 1 ĐỊA ĐIỂM DUY NHẤT (SỬ DỤNG STL) ===")
             

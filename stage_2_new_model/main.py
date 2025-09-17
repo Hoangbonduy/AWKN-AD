@@ -9,8 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.model_selection import train_test_split
-from stage_1.STL import stl_decomposition, clean_and_augment_d
-from stage_2.AE import TimeSeriesAutoencoder
+from stage_1.STL import stl_decomposition, clean_and_augment_d, clean_d, stl_decomposition_2
+from stage_2_new_model.AE import TimeSeriesAutoencoder
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import RobustScaler
 
@@ -116,7 +116,7 @@ def masked_loss(pred, target, mask, loss_fn):
 if __name__ == "__main__":
     # --- 1. Nạp và Chuẩn bị Dữ liệu ---
     DATA_PATH = 'data/cleaned_data_after_idx30.csv'
-    MODEL_SAVE_DIR = 'saved_models'  # Thư mục lưu model cuối cùng
+    MODEL_SAVE_DIR = 'saved_models_new_model'  # Thư mục lưu model cuối cùng
     os.makedirs(MODEL_SAVE_DIR, exist_ok=True)
     MODEL_SAVE_PATH = os.path.join(MODEL_SAVE_DIR, 'autoencoder_model.pth')
 
@@ -131,11 +131,14 @@ if __name__ == "__main__":
         place_ids = df['placeId'].unique()
         print(f"Tổng số địa điểm: {len(place_ids)}")
         
-        # --- THAY ĐỔI 1: XÓA THAM SỐ `decoder_hidden_dim` ---
-        # Khởi tạo Autoencoder một lần
+        # Thêm một hằng số cho GRU hidden dimension
+        GRU_hidden_dim = 32 # Bạn có thể tùy chỉnh giá trị này
+
+        # Khởi tạo Autoencoder một lần với tham số mới
         autoencoder = TimeSeriesAutoencoder(
             input_dim=1,
             kan_out_features=KAN_out_features,
+            gru_hidden_dim=GRU_hidden_dim, # Thêm tham số này
             num_experts=8
         )
         
@@ -163,9 +166,9 @@ if __name__ == "__main__":
             scaler = RobustScaler()
             place_data_scaled = scaler.fit_transform(place_data.reshape(-1, 1)).flatten()
 
-            a_np, d_np = stl_decomposition(place_data_scaled)
+            a_np, d_np = stl_decomposition_2(place_data_scaled, period=29, robust=True)
 
-            d_np = clean_and_augment_d(d_np, method='mad', noise_scale=0.5)  # Clean và augment detail component
+            d_np = clean_d(d_np) # Clean và augment detail component
 
             all_a_data.append(a_np)
             all_d_data.append(d_np)
