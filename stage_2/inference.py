@@ -215,11 +215,12 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
             reconstructed_a, reconstructed_d = model(a_tensor, d_tensor)
             reconstructed_a_np = reconstructed_a.squeeze().cpu().numpy()
             reconstructed_d_np = reconstructed_d.squeeze().cpu().numpy()
-            
-            # Tính MSE loss đúng cách với tensor
-            loss_fn = torch.nn.MSELoss(reduction='none')
-            loss_a = loss_fn(reconstructed_a, a_tensor).squeeze().cpu().numpy()
-            loss_d = loss_fn(reconstructed_d, d_tensor).squeeze().cpu().numpy()
+
+        # Tính MSE loss đúng cách với tensor
+        loss_fn = torch.nn.MSELoss(reduction='none')
+        loss_a = np.abs(a_np - reconstructed_a_np)
+        loss_d = loss_fn(reconstructed_d, d_tensor).squeeze().cpu().numpy()
+
         # 1. Phát hiện Trend Anomalies (từ MSE loss của 'a')
         threshold_a = np.percentile(loss_a, trend_percentile)
         trend_anomaly_indices_raw = np.where(loss_a >= threshold_a)[0]
