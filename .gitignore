@@ -18,6 +18,7 @@ data/
 !results/
 !stage_2_new_model/
 !inference_results_he_kan/
+!stage_2_new_model_wavelet/
 
 # Python cache files
 __pycache__/

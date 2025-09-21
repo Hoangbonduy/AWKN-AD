@@ -141,17 +141,54 @@ def stl_decomposition_2(time_series: np.ndarray, period: int = 29, robust: bool 
 
     return a.values, new_series.values # Trả về numpy array để nhất quán
 
+def stl_decomposition_3(time_series: np.ndarray, period: int = 29, robust: bool = True):
+    # Chuyển sang pandas Series để dùng STL, vì nó xử lý index tốt hơn
+    series = pd.Series(time_series)
+
+    # Thực hiện phân rã STL
+    # period là tham số quan trọng nhất của STL
+    stl_result = STL(series, period=period, robust=robust).fit()
+
+    a = stl_result.trend + stl_result.resid
+    a = a.bfill().ffill()
+
+    return a.values # Trả về numpy array để nhất quán
+
+def stl_decomposition_4(time_series: np.ndarray, period: int = 29, robust: bool = True):
+    # Chuyển sang pandas Series để dùng STL, vì nó xử lý index tốt hơn
+    series = pd.Series(time_series)
+
+    # Thực hiện phân rã STL
+    # period là tham số quan trọng nhất của STL
+    stl_result = STL(series, period=period, robust=robust).fit()
+
+    a = stl_result.trend + stl_result.seasonal
+    a = a.bfill().ffill()
+
+    return a.values # Trả về numpy array để nhất quán
+
 # --- Chạy ví dụ ---
 # Giả sử bạn có file 'place.csv' đã được tiền xử lý
 if __name__ == "__main__":
-    DATA_PATH = 'data/cleaned_data_after_idx30.csv'
+    DATA_PATH = 'data/cleaned_data_no_zero_periods_filtered.csv'
+    
+    # Chỉ định placeId cụ thể thay vì dùng chỉ mục
+    TARGET_PLACE_ID = 4621920615327109068  # Thay đổi placeId này theo nhu cầu
+    
     try:
         df = pd.read_csv(DATA_PATH)
         
-        # Chỉ lấy placeId đầu tiên để làm ví dụ
+        # Lọc dữ liệu theo placeId cụ thể
         if not df.empty:
-            first_place_id = df['placeId'].iloc[0]
-            df_one_place = df[df['placeId'] == first_place_id].copy()  # Tạo copy để tránh warning
+            print(f"Đang xử lý placeId: {TARGET_PLACE_ID}")
+            
+            # Kiểm tra xem placeId có tồn tại trong dữ liệu không
+            if TARGET_PLACE_ID not in df['placeId'].values:
+                print(f"Lỗi: PlaceId {TARGET_PLACE_ID} không tồn tại trong dữ liệu.")
+                print(f"Các placeId có sẵn: {sorted(df['placeId'].unique())[:10]}...")  # Hiển thị 10 placeId đầu tiên
+                exit()
+            
+            df_one_place = df[df['placeId'] == TARGET_PLACE_ID].copy()  # Tạo copy để tránh warning
 
             # Chỉ áp dụng log1p cho cột 'view' (numeric), không phải toàn bộ DataFrame
             df_one_place['view'] = np.log1p(df_one_place['view'].values)
@@ -163,10 +200,11 @@ if __name__ == "__main__":
             time_series = df_one_place['view'].values
 
             # Chạy hàm phân rã bằng STL
-            a_values, d_values = stl_decomposition_2(time_series)
+            # a_values, d_values = stl_decomposition_2(time_series)
+            a_values, _ = stl_decomposition(time_series,period=7)
 
+            _ , d_values = stl_decomposition(time_series,period=7)
             # d_values = clean_and_augment_d(d_values)  # Clean và augment detail component
-            d_values = clean_d(d_values)  # Chỉ làm sạch không augment
 
             print("=== KẾT QUẢ CHO 1 ĐỊA ĐIỂM DUY NHẤT (SỬ DỤNG STL) ===")
             
@@ -176,22 +214,22 @@ if __name__ == "__main__":
 
             # a_values, new_series = stl_decomposition_2(time_series)
 
-            print(f"\n--- Kết quả cho placeId: {first_place_id} ---")
+            print(f"\n--- Kết quả cho placeId: {TARGET_PLACE_ID} ---")
             print("Hệ số Xấp xỉ (a - Chuỗi xu hướng STL):")
             print(a_values[:5])  # In 5 phần tử đầu của numpy array
             
             # Chuyển đổi thành pandas Series để lưu file
             a_series = pd.Series(a_values)
-            a_series.to_csv(f'2_STL_approximation_placeId_{first_place_id}.csv', index=False, header=['view'])
+            a_series.to_csv(f'STL_approximation_placeId_{TARGET_PLACE_ID}.csv', index=False, header=['view'])
             
             print("\nHệ số Chi tiết (d - Chuỗi biến động STL):")
             print(d_values[:5])  # In 5 phần tử đầu của numpy array
             
             # Chuyển đổi thành pandas Series để lưu file
             d_series = pd.Series(d_values)
-            d_series.to_csv(f'2_STL_detail_coeffs_placeId_{first_place_id}.csv', index=False, header=['view'])
+            d_series.to_csv(f'STL_detail_coeffs_placeId_{TARGET_PLACE_ID}.csv', index=False, header=['view'])
 
-            print(f"\nĐã lưu kết quả vào file 2_STL_approximation_placeId_{first_place_id}.csv và 2_STL_detail_coeffs_placeId_{first_place_id}.csv")
+            print(f"\nĐã lưu kết quả vào file STL_approximation_placeId_{TARGET_PLACE_ID}.csv và STL_detail_coeffs_placeId_{TARGET_PLACE_ID}.csv")
             print("\n" + "="*50 + "\n")
         else:
             print(f"File {DATA_PATH} trống hoặc không đúng định dạng.")

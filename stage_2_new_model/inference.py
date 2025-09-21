@@ -10,7 +10,7 @@ from sklearn.preprocessing import RobustScaler
 # Thêm đường dẫn để import các module tùy chỉnh
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from stage_1.KAMA import kama_decomposition
-from stage_1.STL import stl_decomposition
+from stage_1.STL import stl_decomposition, stl_decomposition_4
 from stage_2_new_model.AE import TimeSeriesAutoencoder
 
 def load_he_kan_model(model_path, device='cpu'):
@@ -170,7 +170,7 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = load_he_kan_model(model_path, device)
     
-    output_dir = 'inference_results_he_kan'
+    output_dir = 'inference_results_he_kan_2'
     os.makedirs(output_dir, exist_ok=True)
     
     trend_percentile = 98.0
@@ -188,8 +188,9 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         # Tiền xử lý
         scaler = RobustScaler()
         time_series_scaled = scaler.fit_transform(time_series.reshape(-1, 1)).flatten()
-        a_np, d_np_original = stl_decomposition(time_series_scaled, period=7, robust=True)
-        _, d_np_kama = kama_decomposition(time_series_scaled)
+
+        a_np = stl_decomposition_4(time_series_scaled, period=29, robust=True)
+        _, d_np_kama = stl_decomposition(time_series_scaled, period=7, robust=True)  # Unpack tuple to get residual
         
         # Sử dụng d_np từ KAMA cho đầu vào mô hình vì nó chứa các đỉnh nhọn tốt hơn
         a_tensor = torch.FloatTensor(a_np.copy()).unsqueeze(0).unsqueeze(-1).to(device)
@@ -204,8 +205,8 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         ### LOGIC PHÁT HIỆN ANOMALY ĐÃ ĐỒNG BỘ ###
 
         # Tính absolute error cho a và MSE loss cho d
-        error_a = np.abs(a_np - reconstructed_a_np)
         loss_fn = torch.nn.MSELoss(reduction='none')
+        error_a = loss_fn(reconstructed_a, a_tensor).squeeze().cpu().numpy()
         error_d = loss_fn(reconstructed_d, d_tensor).squeeze().cpu().numpy()
         
         # 1. Phát hiện Trend Anomalies (từ absolute error của 'a')
@@ -213,7 +214,8 @@ def inference_on_places(data_path, labels_dir, model_path, num_places=30):
         trend_anomaly_indices_raw = np.where(error_a >= threshold_a)[0]
         
         # Lọc bỏ nhóm trend anomalies có ít hơn 4 điểm liên tiếp
-        trend_anomaly_indices = filter_anomaly_groups(trend_anomaly_indices_raw, min_group_size=4)
+        # trend_anomaly_indices = filter_anomaly_groups(trend_anomaly_indices_raw, min_group_size=4)
+        trend_anomaly_indices = trend_anomaly_indices_raw
         
         # 2. Phát hiện Point Anomalies (từ MSE của 'd')
         threshold_d = np.percentile(error_d, point_percentile)

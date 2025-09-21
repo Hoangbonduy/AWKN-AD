@@ -4,18 +4,18 @@ import matplotlib.pyplot as plt
 # --- Tải Dữ liệu ---
 # Giữ nguyên phần tải dữ liệu của bạn
 # Giả sử bạn có file 'place.csv' đã được tiền xử lý
-DATA_PATH = 'data/cleaned_data_after_idx30.csv'
+DATA_PATH = 'data/cleaned_data_no_zero_periods_filtered.csv'
 raw_df = pd.read_csv(DATA_PATH)
 
 
-first_place_id = raw_df['placeId'].iloc[0]
+first_place_id = 4621920615327109068  # Thay đổi placeId này theo nhu cầu
 raw_df_one_place = raw_df[raw_df['placeId'] == first_place_id].copy()
 raw_df_one_place.set_index('date', inplace=True)
 
 
 # Đọc hệ số xấp xỉ và chi tiết
-approx = pd.read_csv('2_STL_approximation_placeId_4624474044569362538.csv')
-detail = pd.read_csv('2_STL_detail_coeffs_placeId_4624474044569362538.csv')
+approx = pd.read_csv('STL_approximation_placeId_4621920615327109068.csv')
+detail = pd.read_csv('STL_detail_coeffs_placeId_4621920615327109068.csv')
 original = raw_df_one_place['view']
 
 

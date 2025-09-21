@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.model_selection import train_test_split
-from stage_1.STL import stl_decomposition, clean_and_augment_d, clean_d, stl_decomposition_2
+from stage_1.STL import stl_decomposition, clean_and_augment_d, clean_d, stl_decomposition_2, stl_decomposition_4
 from stage_2_new_model.AE import TimeSeriesAutoencoder
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.preprocessing import RobustScaler
@@ -166,9 +166,10 @@ if __name__ == "__main__":
             scaler = RobustScaler()
             place_data_scaled = scaler.fit_transform(place_data.reshape(-1, 1)).flatten()
 
-            a_np, d_np = stl_decomposition(place_data_scaled,period=7,robust=True)
+            a_np = stl_decomposition_4(place_data_scaled, period=29, robust=True)
+            _, d_np = stl_decomposition(place_data_scaled, period=7, robust=True)
 
-            d_np = clean_and_augment_d(d_np)
+            # d_np = clean_and_augment_d(d_np)
 
             all_a_data.append(a_np)
             all_d_data.append(d_np)
